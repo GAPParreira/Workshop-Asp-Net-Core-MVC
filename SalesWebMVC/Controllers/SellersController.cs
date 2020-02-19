@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using SalesWebMVC.Models;
 using SalesWebMVC.Services;
 using SalesWebMVC.Models.ViewModels;
+using SalesWebMVC.Services.Exceptions;
+using System.Diagnostics;
 
 namespace SalesWebMVC.Controllers
 {
@@ -15,7 +17,7 @@ namespace SalesWebMVC.Controllers
         private readonly DepartmentService _departmentService;
 
         public SellersController(SellerService sellerService, DepartmentService departmentService)
-        {            
+        {
             _sellerService = sellerService;
             _departmentService = departmentService;
         }
@@ -45,10 +47,10 @@ namespace SalesWebMVC.Controllers
         public IActionResult Delete(int? id)
         {
             if (id == null)
-                return NotFound();
+                return RedirectToAction(nameof(Error), new {message = "Id não existe!"});
             var obj = _sellerService.FindById(id.Value);
             if (obj == null)
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id não Encontrado!" });
             return View(obj);
         }
 
@@ -63,22 +65,49 @@ namespace SalesWebMVC.Controllers
         public IActionResult Details(int? id)
         {
             if (id == null)
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id não existe!" });
             var obj = _sellerService.FindById(id.Value);
             if (obj == null)
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id não Encontrado!" });
             return View(obj);
         }
 
         public IActionResult Edit(int? id)
         {
             if (id == null)
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id não existe!" });
             var obj = _sellerService.FindById(id.Value);
             if (obj == null)
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id não Encontrado!" });
             List<Department> departments = _departmentService.FindAll();
             SellerFormViewModel viewModel = new SellerFormViewModel { Seller = obj, Departments = departments };
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(int id, Seller seller)
+        {
+            try
+            {
+                if (id != seller.Id)
+                    return RedirectToAction(nameof(Error), new { message = "Id não correspondente!" });
+                _sellerService.Update(seller);
+                return RedirectToAction(nameof(Index));
+            }
+            catch(ApplicationException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = e.Message });
+            }
+        }
+
+        public IActionResult Error(string message)
+        {
+            var viewModel = new ErrorViewModel
+            {
+                Message = message,
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+            };
             return View(viewModel);
         }
     }
